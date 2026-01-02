@@ -2,11 +2,12 @@ name: Angular CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: ANGULAR_ENV
 
     steps:
       - name: Checkout
@@ -30,13 +31,13 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t your-registry/angular-app:${{ github.sha }} .
-          docker tag your-registry/angular-app:${{ github.sha }} your-registry/angular-app:latest
+          docker build -t chansy/angular-app:${{ github.sha }} .
+          docker tag chansy/angular-app:${{ github.sha }} chansy/angular-app:latest
 
       - name: Push Docker image
         run: |
-          docker push your-registry/angular-app:${{ github.sha }}
-          docker push your-registry/angular-app:latest
+          docker push chansy/angular-app:${{ github.sha }}
+          docker push chansy/angular-app:latest
 
       - name: Deploy to Kubernetes
         run: |
