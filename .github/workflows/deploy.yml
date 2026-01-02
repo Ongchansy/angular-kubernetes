@@ -10,47 +10,57 @@ jobs:
     environment: ANGULAR_ENV
 
     steps:
-      - name: Checkout
+      # 1️⃣ Checkout the code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      # 2️⃣ Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Angular
+      # 4️⃣ Build Angular production
+      - name: Build Angular app
         run: npm run build -- --configuration production
 
-      - name: Login to Docker Registry
+      # 5️⃣ Login to Docker Registry
+      - name: Docker login
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \
-          -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
+      # 6️⃣ Build and tag Docker image
       - name: Build Docker image
         run: |
           docker build -t chansy/angular-app:${{ github.sha }} .
           docker tag chansy/angular-app:${{ github.sha }} chansy/angular-app:latest
 
+      # 7️⃣ Push Docker image
       - name: Push Docker image
         run: |
           docker push chansy/angular-app:${{ github.sha }}
           docker push chansy/angular-app:latest
 
+      # 8️⃣ Setup kubeconfig for remote cluster
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+
+      # 9️⃣ Test Kubernetes access
+      - name: Test Kubernetes access
+        run: kubectl get nodes
+
+      # 🔟 Deploy to Kubernetes
       - name: Deploy to Kubernetes
         run: |
-          echo "Listing k8s folder contents:"
-          ls -R k8s
-
-          echo "Replacing IMAGE_TAG with commit SHA"
+          echo "Replacing IMAGE_TAG with commit SHA in deployment.yml"
           sed -i "s|IMAGE_TAG|${GITHUB_SHA}|g" k8s/deployment.yml
 
-          echo "Testing Kubernetes access"
-          kubectl get nodes
-
-          echo "Applying manifests"
+          echo "Applying Kubernetes manifests"
           kubectl apply -f k8s/
-        env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
